@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>TON Lucky</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #05080f;
+      --card: #0d1220;
+      --card2: #131b2e;
+      --border: rgba(255,255,255,0.06);
+      --gold: #f59e0b;
+      --gold2: #fbbf24;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --muted: #475569;
+      --purple: #8b5cf6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Stars background */
+    .stars {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      background: white; border-radius: 50%;
+      animation: twinkle var(--d) infinite var(--delay);
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.3); }
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 420px; margin: 0 auto;
+      padding: 16px 14px 50px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 20px; font-weight: 900;
+      background: linear-gradient(135deg, var(--gold), #fb923c);
+      text-shadow: none;
+      letter-spacing: 1px;
+    }
+    .logo span { color: white; -webkit-text-fill-color: white; }
+
+    .wallet-mini {
+      display: flex; align-items: center; gap: 8px;
+    }
+    #connectBtnSmall {
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border: none; border-radius: 10px;
+      padding: 8px 14px; color: white;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    #connectBtnSmall:hover { transform: scale(1.03); }
+    .wallet-chip {
+      display: none;
+      align-items: center; gap: 6px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 10px; padding: 7px 12px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+    }
+    .wallet-chip-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Game selector tabs */
+    .tabs {
+      display: flex; gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 6px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 8px;
+      background: none; border: none;
+      border-radius: 12px; color: var(--muted);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.25s;
+      font-family: 'DM Sans', sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+    }
+    .tab-btn .tab-icon { font-size: 20px; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(251,146,60,0.1));
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--gold2);
+    }
+
+    /* Game area */
+    .game-area {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      min-height: 260px;
+      position: relative;
+    }
+    .game-area::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    /* ── COIN FLIP ── */
+    #coinGame {
+      padding: 24px 20px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 20px;
+    }
+    .coin-container {
+      perspective: 600px;
+      width: 110px; height: 110px;
+    }
+    .coin {
+      width: 110px; height: 110px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .coin.flipping {
+      animation: coinFlip 1.5s ease forwards;
+    }
+    .coin.heads { transform: rotateY(0deg); }
+    .coin.tails { transform: rotateY(180deg); }
+    @keyframes coinFlip {
+      0% { transform: rotateY(0); }
+      100% { transform: rotateY(var(--end-rotation)); }
+    }
+    .coin-face {
+      position: absolute; width: 100%; height: 100%;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      backface-visibility: hidden;
+      font-size: 44px;
+      box-shadow: 0 0 30px rgba(245,158,11,0.4);
+    }
+    .coin-heads {
+      background: radial-gradient(circle at 35% 35%, #fde68a, #d97706);
+      border: 3px solid #f59e0b;
+    }
+    .coin-tails {
+      background: radial-gradient(circle at 35% 35%, #e2e8f0, #94a3b8);
+      border: 3px solid #cbd5e1;
+      transform: rotateY(180deg);
+    }
+
+    .coin-choice {
+      display: flex; gap: 10px; width: 100%;
+    }
+    .choice-btn {
+      flex: 1; padding: 12px;
+      border-radius: 14px;
+      border: 2px solid var(--border);
+      background: var(--card2);
+      color: var(--muted);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+      display: flex; align-items: center;
+      justify-content: center; gap: 6px;
+    }
+    .choice-btn:hover { border-color: var(--gold); color: var(--gold2); }
+    .choice-btn.selected {
+      border-color: var(--gold);
+      background: rgba(245,158,11,0.15);
+      color: var(--gold2);
+    }
+
+    /* ── DICE ── */
+    #diceGame {
+      padding: 24px 20px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 18px;
+    }
+    .dice-display {
+      width: 100px; height: 100px;
+      background: linear-gradient(135deg, #1e3a5f, #1e2d47);
+      border: 2px solid rgba(59,130,246,0.4);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 54px;
+      box-shadow: 0 0 30px rgba(59,130,246,0.3);
+      transition: transform 0.1s;
+    }
+    .dice-display.rolling { animation: diceShake 0.8s ease; }
+    @keyframes diceShake {
+      0%,100%{transform:rotate(0) scale(1)}
+      20%{transform:rotate(-15deg) scale(1.1)}
+      40%{transform:rotate(15deg) scale(1.1)}
+      60%{transform:rotate(-10deg) scale(1.05)}
+      80%{transform:rotate(10deg) scale(1.05)}
+    }
+
+    .dice-predict {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; justify-content: center;
+    }
+    .predict-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .predict-select {
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 8px 14px;
+      color: var(--text); font-size: 15px; font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+      outline: none; cursor: pointer;
+    }
+    .predict-select:focus { border-color: var(--blue); }
+
+    .dice-numbers {
+      display: flex; gap: 8px;
+    }
+    .dice-num-btn {
+      width: 40px; height: 40px;
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--muted);
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .dice-num-btn:hover, .dice-num-btn.active {
+      border-color: var(--blue);
+      background: rgba(59,130,246,0.15);
+      color: var(--blue);
+    }
+
+    /* ── SLOTS ── */
+    #slotsGame {
+      padding: 24px 20px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 18px;
+    }
+    .slots-machine {
+      display: flex; gap: 8px;
+      background: var(--card2);
+      border: 2px solid rgba(139,92,246,0.3);
+      border-radius: 18px; padding: 14px;
+      box-shadow: 0 0 25px rgba(139,92,246,0.15);
+    }
+    .slot-reel {
+      width: 68px; height: 68px;
+      background: var(--bg);
+      border: 1.5px solid rgba(139,92,246,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      overflow: hidden;
+      position: relative;
+    }
+    .slot-reel.spinning .slot-emoji {
+      animation: slotSpin 0.5s linear infinite;
+    }
+    @keyframes slotSpin {
+      0%{transform:translateY(0);opacity:1}
+      50%{transform:translateY(-20px);opacity:0}
+      51%{transform:translateY(20px);opacity:0}
+      100%{transform:translateY(0);opacity:1}
+    }
+    .slot-emoji { transition: all 0.3s; }
+
+    .slots-info {
+      display: flex; gap: 10px; width: 100%; justify-content: center;
+    }
+    .slots-chip {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px 12px;
+      font-size: 11px; color: var(--muted);
+      text-align: center;
+    }
+    .slots-chip strong { display: block; color: var(--text); font-size: 13px; }
+
+    /* ── BET AREA (shared) ── */
+    .bet-area {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px; padding: 18px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .bet-row { display: flex; align-items: center; gap: 12px; }
+    .bet-input-wrap {
+      flex: 1;
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .bet-input-wrap:focus-within {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+    }
+    .bet-icon { font-size: 18px; }
+    #betInput {
+      flex: 1; background: none; border: none; outline: none;
+      font-family: 'Orbitron', monospace;
+      font-size: 20px; font-weight: 700; color: var(--gold2);
+      width: 100%; min-width: 0;
+    }
+    #betInput::placeholder { color: var(--muted); font-family: 'DM Sans',sans-serif; font-size: 16px; }
+    .bet-unit { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    .bet-btns { display: flex; gap: 6px; }
+    .bet-quick {
+      flex: 1; padding: 9px 4px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--muted);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .bet-quick:hover {
+      background: rgba(245,158,11,0.15);
+      border-color: var(--gold);
+      color: var(--gold2);
+    }
+
+    /* Multiplier info */
+    .multiplier-row {
+      display: flex; gap: 8px;
+    }
+    .mult-chip {
+      flex: 1; background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px;
+      text-align: center; font-size: 11px;
+      color: var(--muted);
+    }
+    .mult-chip .mult-val {
+      display: block; font-size: 14px;
+      font-weight: 700; margin-top: 2px;
+    }
+    .mult-chip.win .mult-val { color: var(--green); }
+    .mult-chip.lose .mult-val { color: var(--red); }
+    .mult-chip.odds .mult-val { color: var(--gold2); }
+
+    /* Play button */
+    .play-btn {
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, var(--gold) 0%, #f97316 100%);
+      border: none; border-radius: 16px;
+      color: #0a0e1a;
+      font-family: 'Orbitron', monospace;
+      font-size: 15px; font-weight: 900;
+      cursor: pointer; transition: all 0.3s;
+      letter-spacing: 1px;
+      position: relative; overflow: hidden;
+    }
+    .play-btn::before {
+      content: '';
+      position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      transition: left 0.4s;
+    }
+    .play-btn:hover::before { left: 100%; }
+    .play-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(245,158,11,0.4); }
+    .play-btn:active { transform: translateY(0); }
+    .play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .play-btn-inner {
+      display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+    }
+    .play-spinner {
+      display: none; width: 18px; height: 18px;
+      border: 2.5px solid rgba(0,0,0,0.3);
+      border-top-color: #0a0e1a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Result overlay */
+    .result-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; z-index: 100;
+      background: rgba(0,0,0,0.85);
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(6px);
+    }
+    .result-overlay.show { display: flex; }
+    .result-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 28px;
+      padding: 36px 28px;
+      text-align: center;
+      max-width: 300px; width: 90%;
+      animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .result-card.win { border-color: var(--green); }
+    .result-card.lose { border-color: var(--red); }
+    .result-emoji { font-size: 64px; margin-bottom: 12px; }
+    .result-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 24px; font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .result-title.win { color: var(--green); }
+    .result-title.lose { color: var(--red); }
+    .result-amount { font-size: 18px; font-weight: 600; color: var(--muted); margin-bottom: 20px; }
+    .result-amount strong { color: var(--gold2); font-size: 22px; }
+    .result-close {
+      padding: 12px 32px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .result-close:hover { border-color: var(--gold); color: var(--gold2); }
+
+    /* Stats row */
+    .stats-row {
+      display: flex; gap: 8px;
+    }
+    .stat-card {
+      flex: 1; background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 12px;
+      text-align: center;
+    }
+    .stat-label { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    .stat-value { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 700; color: var(--text); margin-top: 4px; }
+    .stat-value.positive { color: var(--green); }
+    .stat-value.negative { color: var(--red); }
+
+    /* Connect overlay */
+    .connect-overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(5,8,15,0.85);
+      backdrop-filter: blur(4px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; border-radius: 22px;
+      z-index: 10;
+    }
+    .connect-overlay h3 { font-size: 16px; font-weight: 700; }
+    .connect-overlay p { font-size: 13px; color: var(--muted); }
+    #connectBtnOverlay {
+      background: linear-gradient(135deg, var(--gold), #f97316);
+      border: none; border-radius: 14px;
+      padding: 12px 24px; color: #0a0e1a;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      margin-top: 4px;
+    }
+
+    /* Hidden ton-connect */
+    #ton-connect-hidden { display: none; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .container > * {
+      animation: fadeUp 0.4s ease forwards;
+      opacity: 0;
+    }
+    .container > *:nth-child(1){animation-delay:0.05s}
+    .container > *:nth-child(2){animation-delay:0.1s}
+    .container > *:nth-child(3){animation-delay:0.15s}
+    .container > *:nth-child(4){animation-delay:0.2s}
+    .container > *:nth-child(5){animation-delay:0.25s}
+
+    /* Confetti */
+    .confetti-piece {
+      position: fixed; width: 10px; height: 10px;
+      border-radius: 2px;
+      animation: confettiFall 2s ease-in forwards;
+      z-index: 200; pointer-events: none;
+    }
+    @keyframes confettiFall {
+      0%{transform:translateY(-50px) rotate(0);opacity:1}
+      100%{transform:translateY(100vh) rotate(720deg);opacity:0}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">TON<span>🎮</span>LUCKY</div>
+    <div class="wallet-mini">
+      <button id="connectBtnSmall">🔗 Ulash</button>
+      <div class="wallet-chip" id="walletChip">
+        <div class="wallet-chip-dot"></div>
+        <span id="walletShort">UQB...xyz</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">🎮 O'yinlar</div>
+      <div class="stat-value" id="statGames">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">🏆 Yutishlar</div>
+      <div class="stat-value positive" id="statWins">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💰 Balans</div>
+      <div class="stat-value" id="statBalance">0 TON</div>
+    </div>
+  </div>
+
+  <!-- Game Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-game="coin" onclick="switchGame('coin')">
+      <span class="tab-icon">🪙</span>
+      Tanga
+    </button>
+    <button class="tab-btn" data-game="dice" onclick="switchGame('dice')">
+      <span class="tab-icon">🎲</span>
+      Zar
+    </button>
+    <button class="tab-btn" data-game="slots" onclick="switchGame('slots')">
+      <span class="tab-icon">🎰</span>
+      Slot
+    </button>
+  </div>
+
+  <!-- Game Area -->
+  <div class="game-area">
+    <!-- Connect overlay -->
+    <div class="connect-overlay" id="connectOverlay">
+      <div style="font-size:40px">🔐</div>
+      <h3>Hamyon ulang</h3>
+      <p>O'yin o'ynash uchun TON hamyon ulang</p>
+      <button id="connectBtnOverlay">💎 Hamyon ulash</button>
+    </div>
+
+    <!-- COIN FLIP -->
+    <div id="coinGame">
+      <div class="coin-container">
+        <div class="coin heads" id="coin">
+          <div class="coin-face coin-heads">🌟</div>
+          <div class="coin-face coin-tails">🌙</div>
+        </div>
+      </div>
+      <div class="coin-choice">
+        <button class="choice-btn selected" id="choiceHeads" onclick="selectCoin('heads')">
+          🌟 Yulduz
+        </button>
+        <button class="choice-btn" id="choiceTails" onclick="selectCoin('tails')">
+          🌙 Oy
+        </button>
+      </div>
+    </div>
+
+    <!-- DICE -->
+    <div id="diceGame" style="display:none">
+      <div class="dice-display" id="diceDisplay">🎲</div>
+      <div class="dice-predict">
+        <span class="predict-label">Taxmin:</span>
+      </div>
+      <div class="dice-numbers">
+        <button class="dice-num-btn active" onclick="selectDice(this,1)">1</button>
+        <button class="dice-num-btn" onclick="selectDice(this,2)">2</button>
+        <button class="dice-num-btn" onclick="selectDice(this,3)">3</button>
+        <button class="dice-num-btn" onclick="selectDice(this,4)">4</button>
+        <button class="dice-num-btn" onclick="selectDice(this,5)">5</button>
+        <button class="dice-num-btn" onclick="selectDice(this,6)">6</button>
+      </div>
+    </div>
+
+    <!-- SLOTS -->
+    <div id="slotsGame" style="display:none">
+      <div class="slots-machine">
+        <div class="slot-reel" id="reel1"><span class="slot-emoji">💎</span></div>
+        <div class="slot-reel" id="reel2"><span class="slot-emoji">💎</span></div>
+        <div class="slot-reel" id="reel3"><span class="slot-emoji">💎</span></div>
+      </div>
+      <div class="slots-info">
+        <div class="slots-chip">3 xuddi <strong>🎰 x10</strong></div>
+        <div class="slots-chip">2 xuddi <strong>🎯 x2</strong></div>
+        <div class="slots-chip">Hech yo'q <strong>💸 -1x</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bet Area -->
+  <div class="bet-area">
+    <div class="bet-row">
+      <div class="bet-input-wrap">
+        <span class="bet-icon">💎</span>
+        <input type="number" id="betInput" placeholder="0.1" min="0.1" step="0.05"/>
+        <span class="bet-unit">TON</span>
+      </div>
+    </div>
+    <div class="bet-btns">
+      <button class="bet-quick" onclick="setBet(0.1)">0.1</button>
+      <button class="bet-quick" onclick="setBet(0.5)">0.5</button>
+      <button class="bet-quick" onclick="setBet(1)">1</button>
+      <button class="bet-quick" onclick="setBet(2)">2</button>
+      <button class="bet-quick" onclick="setBetHalf()">½</button>
+      <button class="bet-quick" onclick="setBetDouble()">×2</button>
+    </div>
+    <div class="multiplier-row" id="multiplierRow">
+      <div class="mult-chip win">
+        <span>🏆 Yutsangiz</span>
+        <span class="mult-val" id="winAmount">+0.1 TON</span>
+      </div>
+      <div class="mult-chip lose">
+        <span>💸 Yutqazsangiz</span>
+        <span class="mult-val" id="loseAmount">-0.1 TON</span>
+      </div>
+      <div class="mult-chip odds">
+        <span>📊 Ehtimol</span>
+        <span class="mult-val" id="winOdds">50%</span>
+      </div>
+    </div>
+    <button class="play-btn" id="playBtn" disabled>
+      <div class="play-btn-inner">
+        <div class="play-spinner" id="playSpinner"></div>
+        <span id="playBtnText">🎮 O'YNASH</span>
+      </div>
+    </button>
+  </div>
+
+</div>
+
+<!-- Result Overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card" id="resultCard">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title" id="resultTitle">YUTDINGIZ!</div>
+    <div class="result-amount" id="resultAmount">+<strong>0.1 TON</strong></div>
+    <button class="result-close" onclick="closeResult()">OK, davom eting!</button>
+  </div>
+</div>
+
+<div id="ton-connect-hidden"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#05080f'); tg.setBackgroundColor('#05080f'); }
+
+// Stars
+(function(){
+  const s = document.getElementById('stars');
+  for(let i=0;i<60;i++){
+    const el=document.createElement('div');
+    el.className='star';
+    const size=Math.random()*2.5+0.5;
+    el.style.cssText=`
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      --d:${2+Math.random()*4}s;--delay:${Math.random()*4}s;
+    `;
+    s.appendChild(el);
+  }
+})();
+
+// TON Connect
+const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+  manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json',
+  buttonRootId: 'ton-connect-hidden',
+});
+
+let isConnected = false;
+let stats = { games: 0, wins: 0, balance: 0 };
+
+// Game state
+let currentGame = 'coin';
+let coinChoice = 'heads';
+let diceChoice = 1;
+const DICE_EMOJIS = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+const SLOT_EMOJIS = ['💎','🌟','🍀','🔥','⚡','🎯'];
+let slotState = ['💎','💎','💎'];
+
+tonConnectUI.onStatusChange((wallet) => {
+  if (wallet) {
+    isConnected = true;
+    const addr = wallet.account.address;
+    document.getElementById('walletShort').textContent = addr.slice(0,4)+'...'+addr.slice(-3);
+    document.getElementById('walletChip').style.display = 'flex';
+    document.getElementById('connectBtnSmall').style.display = 'none';
+    document.getElementById('connectOverlay').style.display = 'none';
+    validatePlay();
+  } else {
+    isConnected = false;
+    document.getElementById('walletChip').style.display = 'none';
+    document.getElementById('connectBtnSmall').style.display = 'block';
+    document.getElementById('connectOverlay').style.display = 'flex';
+    document.getElementById('playBtn').disabled = true;
+  }
+});
+
+document.getElementById('connectBtnSmall').onclick = () => tonConnectUI.openModal();
+document.getElementById('connectBtnOverlay').onclick = () => tonConnectUI.openModal();
+document.getElementById('walletChip').onclick = () => tonConnectUI.disconnect();
+
+// Game switch
+function switchGame(g) {
+  currentGame = g;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.game===g));
+  document.getElementById('coinGame').style.display = g==='coin' ? 'flex' : 'none';
+  document.getElementById('diceGame').style.display = g==='dice' ? 'flex' : 'none';
+  document.getElementById('slotsGame').style.display = g==='slots' ? 'flex' : 'none';
+  updateOdds();
+}
+
+function selectCoin(c) {
+  coinChoice = c;
+  document.getElementById('choiceHeads').classList.toggle('selected', c==='heads');
+  document.getElementById('choiceTails').classList.toggle('selected', c==='tails');
+}
+
+function selectDice(btn, n) {
+  diceChoice = n;
+  document.querySelectorAll('.dice-num-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Bet
+document.getElementById('betInput').addEventListener('input', () => {
+  updateOdds(); validatePlay();
+});
+function setBet(v) { document.getElementById('betInput').value=v; updateOdds(); validatePlay(); }
+function setBetHalf() {
+  const v=parseFloat(document.getElementById('betInput').value)||0.1;
+  document.getElementById('betInput').value = Math.max(0.1, (v/2).toFixed(2));
+  updateOdds(); validatePlay();
+}
+function setBetDouble() {
+  const v=parseFloat(document.getElementById('betInput').value)||0.1;
+  document.getElementById('betInput').value = (v*2).toFixed(2);
+  updateOdds(); validatePlay();
+}
+
+function updateOdds() {
+  const bet = parseFloat(document.getElementById('betInput').value)||0;
+  let mult=1, odds='50%';
+  if(currentGame==='dice') { mult=5; odds='16.7%'; }
+  else if(currentGame==='slots') { mult=9; odds='~5%'; }
+
+  document.getElementById('winAmount').textContent = `+${(bet*mult).toFixed(2)} TON`;
+  document.getElementById('loseAmount').textContent = `-${bet.toFixed(2)} TON`;
+  document.getElementById('winOdds').textContent = odds;
+}
+
+function validatePlay() {
+  const bet = parseFloat(document.getElementById('betInput').value);
+  document.getElementById('playBtn').disabled = !(isConnected && !isNaN(bet) && bet >= 0.1);
+}
+
+// Play
+document.getElementById('playBtn').addEventListener('click', async () => {
+  const bet = parseFloat(document.getElementById('betInput').value);
+  if (!isConnected || bet < 0.1) return;
+
+  // Disable btn, show spinner
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('playSpinner').style.display = 'block';
+  document.getElementById('playBtnText').textContent = 'Kutilmoqda...';
+
+  try {
+    // Send TON transaction (bet goes to your wallet)
+    await tonConnectUI.sendTransaction({
+      messages: [{
+        // ← O'z manzilingizni kiriting
+        address: 'UQAvz6Z_W6EX19onOhoA0VYEoZqkOX2sz9NGjRZ5I0jU1w2B',
+        amount: Math.floor(bet * 1e9).toString(),
+      }],
+      validUntil: Math.floor(Date.now()/1000) + 360,
+    });
+
+    // Simulate game after payment
+    await runGame(bet);
+
+  } catch(e) {
+    const msg = e?.message||'';
+    if(!msg.includes('reject')&&!msg.includes('cancel')) {
+      showResult(false, bet, 'Tranzaksiya xatoligi');
+    } else {
+      resetPlayBtn();
+    }
+    if(tg) tg.HapticFeedback?.notificationOccurred('error');
+  }
+});
+
+async function runGame(bet) {
+  document.getElementById('playBtnText').textContent = 'O\'ynamoqda...';
+
+  if (currentGame === 'coin') {
+    await runCoin(bet);
+  } else if (currentGame === 'dice') {
+    await runDice(bet);
+  } else {
+    await runSlots(bet);
+  }
+}
+
+async function runCoin(bet) {
+  const coin = document.getElementById('coin');
+  const result = Math.random() < 0.5 ? 'heads' : 'tails';
+  const win = result === coinChoice;
+  const rotations = 720 + (result === 'tails' ? 180 : 0);
+
+  coin.style.setProperty('--end-rotation', rotations+'deg');
+  coin.classList.add('flipping');
+  coin.className = 'coin flipping';
+
+  await sleep(1600);
+  coin.classList.remove('flipping');
+  coin.className = `coin ${result}`;
+
+  finishGame(win, bet, 1);
+}
+
+async function runDice(bet) {
+  const disp = document.getElementById('diceDisplay');
+  disp.classList.add('rolling');
+
+  let count = 0;
+  const interval = setInterval(() => {
+    const r = Math.ceil(Math.random()*6);
+    disp.textContent = DICE_EMOJIS[r];
+    count++;
+    if(count > 12) {
+      clearInterval(interval);
+      const final = Math.ceil(Math.random()*6);
+      disp.textContent = DICE_EMOJIS[final];
+      disp.classList.remove('rolling');
+      finishGame(final === diceChoice, bet, 5);
+    }
+  }, 80);
+}
+
+async function runSlots(bet) {
+  const reels = ['reel1','reel2','reel3'];
+  const results = [];
+
+  for(let i=0;i<3;i++){
+    const el = document.getElementById(reels[i]);
+    el.classList.add('spinning');
+  }
+
+  await sleep(400);
+  for(let i=0;i<3;i++){
+    await sleep(300);
+    const r = SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)];
+    results.push(r);
+    const el = document.getElementById(reels[i]);
+    el.classList.remove('spinning');
+    el.querySelector('.slot-emoji').textContent = r;
+  }
+
+  await sleep(200);
+  const allSame = results[0]===results[1] && results[1]===results[2];
+  const twoSame = results[0]===results[1]||results[1]===results[2]||results[0]===results[2];
+  const mult = allSame ? 9 : twoSame ? 1 : 0;
+  finishGame(mult > 0, bet, mult);
+}
+
+function finishGame(win, bet, mult) {
+  stats.games++;
+  if(win) stats.wins++;
+  const delta = win ? bet*mult : -bet;
+  stats.balance = parseFloat((stats.balance + delta).toFixed(3));
+
+  document.getElementById('statGames').textContent = stats.games;
+  document.getElementById('statWins').textContent = stats.wins;
+  const balEl = document.getElementById('statBalance');
+  balEl.textContent = (stats.balance >= 0 ? '+' : '') + stats.balance + ' TON';
+  balEl.className = 'stat-value ' + (stats.balance >= 0 ? 'positive' : 'negative');
+
+  setTimeout(() => showResult(win, bet*mult), 200);
+}
+
+function showResult(win, amount, customTitle) {
+  const overlay = document.getElementById('resultOverlay');
+  const card = document.getElementById('resultCard');
+  const emoji = document.getElementById('resultEmoji');
+  const title = document.getElementById('resultTitle');
+  const amountEl = document.getElementById('resultAmount');
+
+  card.className = `result-card ${win ? 'win' : 'lose'}`;
+  emoji.textContent = win ? '🎉' : '😤';
+  title.className = `result-title ${win ? 'win' : 'lose'}`;
+  title.textContent = customTitle || (win ? 'YUTDINGIZ!' : 'YUTQAZDINGIZ');
+  amountEl.innerHTML = win
+    ? `<strong>+${amount.toFixed(3)} TON</strong> yutdingiz!`
+    : `<strong>-${amount.toFixed(3)} TON</strong> yutqazdingiz`;
+
+  overlay.classList.add('show');
+
+  if(win) {
+    confetti();
+    if(tg) tg.HapticFeedback?.notificationOccurred('success');
+  } else {
+    if(tg) tg.HapticFeedback?.notificationOccurred('error');
+  }
+
+  resetPlayBtn();
+}
+
+function closeResult() {
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+function resetPlayBtn() {
+  document.getElementById('playSpinner').style.display = 'none';
+  document.getElementById('playBtnText').textContent = '🎮 O\'YNASH';
+  validatePlay();
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+function confetti() {
+  const colors = ['#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899'];
+  for(let i=0;i<40;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    el.style.cssText=`
+      left:${Math.random()*100}vw;
+      top:-10px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${6+Math.random()*8}px;
+      height:${6+Math.random()*8}px;
+      animation-delay:${Math.random()*0.5}s;
+      animation-duration:${1.5+Math.random()*1}s;
+    `;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 3000);
+  }
+}
+
+updateOdds();
+</script>
+</body>
+</html>
